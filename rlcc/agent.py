@@ -5,7 +5,7 @@ import sys
 
 class PPOAgent:
 
-    def __init__(self, env, steps_per_epoch=100, gamma=0.995, epsilon=0.1, device='cpu'):
+    def __init__(self, env, steps_per_epoch=10, gamma=0.995, epsilon=0.1, device='cpu'):
         super().__init__()
         self.device = device
         self.env = env
@@ -32,7 +32,7 @@ class PPOAgent:
 
         env_info = self.env.reset(train_mode=True)[self.brain_name]
         states = env_info.vector_observations
-        for _ in range(self.steps_per_epoch):
+        while True:
             states = torch.Tensor(states).to(self.device)
             output = self.actor_critic(states)
             actions = output['a']
@@ -45,6 +45,9 @@ class PPOAgent:
             rewards = env_info.rewards
             history['rewards'].append(rewards)
             states = next_states
+            dones = env_info.local_done
+            if np.any(dones):
+                break
 
         history['actions'] = torch.stack(history['actions']).detach()
         history['log_prob'] = torch.stack(history['log_prob']).detach()
@@ -72,17 +75,15 @@ class PPOAgent:
         new_probs = output['log_prob']
         v_loss = torch.pow(rewards.unsqueeze(-1).float() - output['v'], 2)
 
-        ratio = new_probs/old_probs
-        sys.stdout.flush()
+        ratio = (new_probs - old_probs).exp()
         clip = torch.clamp(ratio, 1-self.epsilon, 1+self.epsilon).float()
         clipped_surrogate = torch.min(ratio*advantage, clip*advantage)
-        return torch.mean(clipped_surrogate + 0.5*v_loss)
+        return torch.mean(-clipped_surrogate) + 0.5*torch.mean(v_loss)
 
     def learn_step(self):
 
         trajectory = self.collect_trajectories()
-        # TODO: add as parameter
-        for _ in range(10):
+        for _ in range(self.steps_per_epoch):
             clipped_surrogate = self.surrogate_func(trajectory)
             self.opt.zero_grad()
             clipped_surrogate.backward()
