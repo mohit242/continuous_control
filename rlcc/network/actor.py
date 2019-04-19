@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class PPOActor(nn.Module):
 
-    def __init__(self, state_dim, action_dim, hidden_units=(64, 64), gate=nn.ReLU()):
+    def __init__(self, state_dim, action_dim, hidden_units=(128, 64, 64), gate=nn.ELU()):
         """ Network class for PPO actor network
 
         Args:
@@ -22,6 +22,13 @@ class PPOActor(nn.Module):
         self.network = nn.Sequential(*layers)
 
         self.std = nn.Parameter(torch.zeros(action_dim))
+
+    def preprocess_actions(self, actions):
+        dist = torch.distributions.Normal(0, 0.15)
+        noise = dist.sample(actions.size())
+        noise = torch.clamp(noise, -0.1, 0.1)
+        actions = torch.clamp(actions + noise, -1, 1)
+        return actions
 
     def forward(self, state, action=None):
         state = torch.Tensor(state)

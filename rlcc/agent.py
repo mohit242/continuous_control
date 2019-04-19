@@ -5,10 +5,13 @@ import sys
 
 class PPOAgent:
 
-    def __init__(self, env, steps_per_epoch=10, gamma=0.995, epsilon=0.1, device='cpu'):
+    def __init__(self, env, steps_per_epoch=20, gradient_clip=1, gamma=0.995, epsilon=0.2, device='cpu',
+                 minibatch_size=200):
         super().__init__()
         self.device = device
+        self.minibatch_size = minibatch_size
         self.env = env
+        self.gradient_clip = gradient_clip
         self.steps_per_epoch = steps_per_epoch
         self.gamma = gamma
         self.epsilon = epsilon
@@ -24,8 +27,6 @@ class PPOAgent:
 
         self.opt = torch.optim.Adam(self.actor_critic.parameters())
 
-    def preprocess_actions(self, actions):
-        pass
 
     def collect_trajectories(self):
         history = {'states': [], 'rewards': [], 'actions': [], 'log_prob': [], 'values': []}
@@ -56,7 +57,7 @@ class PPOAgent:
         return history
 
     def surrogate_func(self, trajectory):
-
+        ind = np.random.choice(np.arange(1001), (self.minibatch_size, ))
         discount = self.gamma ** np.arange(len(trajectory['rewards']))
         rewards = np.asarray(trajectory['rewards']) * discount[:, np.newaxis]
         rewards_futures = rewards[::-1].cumsum(axis=0)[::-1]
@@ -65,13 +66,16 @@ class PPOAgent:
         std = np.std(rewards_futures, axis=1) + 1.0e-10
 
         rewards_normalized = (rewards_futures - mean[:, np.newaxis]) / std[:, np.newaxis]
+        # using mean and std of whole trajectory
+        # rewards_normalized = (rewards_futures - np.mean(rewards_futures)) / (np.std(rewards_futures) + 1.0e-10)
 
-        actions = trajectory['actions']
-        old_probs = trajectory['log_prob']
-        rewards = torch.from_numpy(rewards_normalized).to(self.device)
-        advantage = rewards.unsqueeze(-1).float() - trajectory['values'].detach()
+        actions = trajectory['actions'][ind]
+        old_probs = trajectory['log_prob'][ind]
+        rewards = torch.from_numpy(rewards_normalized[ind]).to(self.device)
+        advantage = rewards.unsqueeze(-1).float() - trajectory['values'][ind].detach()
+        # advantage = (advantage - advantage.mean())/(advantage.std() + 1.0e-10)
 
-        output = self.actor_critic(trajectory['states'], actions)
+        output = self.actor_critic(trajectory['states'][ind], actions)
         new_probs = output['log_prob']
         v_loss = torch.pow(rewards.unsqueeze(-1).float() - output['v'], 2)
 
@@ -87,10 +91,28 @@ class PPOAgent:
             clipped_surrogate = self.surrogate_func(trajectory)
             self.opt.zero_grad()
             clipped_surrogate.backward()
+            # torch.nn.utils.clip_grad_norm_(self.actor_critic.parameters(), self.gradient_clip)
             self.opt.step()
 
         score = np.array(trajectory['rewards']).sum() / self.num_agents
         return score
 
     def eval_step(self):
-        pass
+        env_info = self.env.reset(train_mode=False)[self.brain_name]
+        states = env_info.vector_observations
+        rewards_history = []
+        while True:
+            states = torch.Tensor(states).to(self.device)
+            output = self.actor_critic(states)
+            actions = output['a']
+            env_info = self.env.step(actions.numpy())[self.brain_name]
+            next_states = env_info.vector_observations
+            rewards_history.append(env_info.rewards)
+            states = next_states
+            dones = env_info.local_done
+            if np.any(dones):
+                break
+        score = np.sum(rewards_history) / self.num_agents
+        return score
+
+
