@@ -5,7 +5,7 @@ import sys
 
 class PPOAgent:
 
-    def __init__(self, env, steps_per_epoch=20, gradient_clip=1, gamma=0.995, epsilon=0.2, device='cpu',
+    def __init__(self, env, steps_per_epoch=20, gradient_clip=1, gamma=0.995, clip_ratio=0.2, device='cpu',
                  minibatch_size=200):
         super().__init__()
         self.device = device
@@ -14,7 +14,7 @@ class PPOAgent:
         self.gradient_clip = gradient_clip
         self.steps_per_epoch = steps_per_epoch
         self.gamma = gamma
-        self.epsilon = epsilon
+        self.epsilon = clip_ratio
         self.brain_name = env.brain_names[0]
         self.brain = env.brains[self.brain_name]
         env_info = env.reset(train_mode=True)[self.brain_name]
@@ -98,7 +98,7 @@ class PPOAgent:
         return score
 
     def eval_step(self):
-        env_info = self.env.reset(train_mode=False)[self.brain_name]
+        env_info = self.env.reset(train_mode=True)[self.brain_name]
         states = env_info.vector_observations
         rewards_history = []
         while True:
