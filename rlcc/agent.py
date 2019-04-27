@@ -22,7 +22,7 @@ class PPOAgent:
         self.action_dim = self.brain.vector_action_space_size
         self.state_dim = self.brain.vector_observation_space_size
 
-        self.actor_critic = PPOActorCritic(self.state_dim, self.action_dim)
+        self.actor_critic = PPOActorCritic(self.state_dim, self.action_dim).to(self.device)
         self.actor_critic.to(device)
 
         self.opt = torch.optim.Adam(self.actor_critic.parameters())
@@ -36,7 +36,7 @@ class PPOAgent:
         while True:
             states = torch.Tensor(states).to(self.device)
             output = self.actor_critic(states)
-            actions = output['a']
+            actions = output['a'].cpu()
             history['actions'].append(actions)
             history['states'].append(states)
             history['log_prob'].append(output['log_prob'])
@@ -69,13 +69,13 @@ class PPOAgent:
         # using mean and std of whole trajectory
         # rewards_normalized = (rewards_futures - np.mean(rewards_futures)) / (np.std(rewards_futures) + 1.0e-10)
 
-        actions = trajectory['actions'][ind]
-        old_probs = trajectory['log_prob'][ind]
+        actions = trajectory['actions'][ind].to(self.device)
+        old_probs = trajectory['log_prob'][ind].to(self.device)
         rewards = torch.from_numpy(rewards_normalized[ind]).to(self.device)
-        advantage = rewards.unsqueeze(-1).float() - trajectory['values'][ind].detach()
+        advantage = rewards.unsqueeze(-1).float() - trajectory['values'][ind].to(self.device).detach()
         # advantage = (advantage - advantage.mean())/(advantage.std() + 1.0e-10)
 
-        output = self.actor_critic(trajectory['states'][ind], actions)
+        output = self.actor_critic(trajectory['states'][ind].to(self.device), actions)
         new_probs = output['log_prob']
         v_loss = torch.pow(rewards.unsqueeze(-1).float() - output['v'], 2)
 
@@ -98,13 +98,13 @@ class PPOAgent:
         return score
 
     def eval_step(self):
-        env_info = self.env.reset(train_mode=True)[self.brain_name]
+        env_info = self.env.reset(train_mode=False)[self.brain_name]
         states = env_info.vector_observations
         rewards_history = []
         while True:
             states = torch.Tensor(states).to(self.device)
             output = self.actor_critic(states)
-            actions = output['a']
+            actions = output['a'].cpu()
             env_info = self.env.step(actions.numpy())[self.brain_name]
             next_states = env_info.vector_observations
             rewards_history.append(env_info.rewards)

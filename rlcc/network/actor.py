@@ -23,12 +23,12 @@ class PPOActor(nn.Module):
 
         self.std = nn.Parameter(torch.zeros(action_dim))
 
-    def preprocess_actions(self, actions):
-        dist = torch.distributions.Normal(0, 0.15)
-        noise = dist.sample(actions.size())
-        noise = torch.clamp(noise, -0.1, 0.1)
-        actions = torch.clamp(actions + noise, -1, 1)
-        return actions
+    # def preprocess_actions(self, actions):
+    #     dist = torch.distributions.Normal(0, 0.15)
+    #     noise = dist.sample(actions.size())
+    #     noise = torch.clamp(noise, -0.1, 0.1)
+    #     actions = torch.clamp(actions + noise, -1, 1)
+    #     return actions
 
     def forward(self, state, action=None):
         state = torch.Tensor(state)
@@ -36,6 +36,7 @@ class PPOActor(nn.Module):
         dist = torch.distributions.Normal(mean, F.softplus(self.std))
         if action is None:
             action = dist.sample()
+            action = torch.clamp(action, -1., 1.)
         log_prob = dist.log_prob(action).sum(-1).unsqueeze(-1)
 
         # No need for entropy as entropy for normal distribution depends on sigma
