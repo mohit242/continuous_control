@@ -91,7 +91,7 @@ class PPOAgent:
             clipped_surrogate = self.surrogate_func(trajectory)
             self.opt.zero_grad()
             clipped_surrogate.backward()
-            torch.nn.utils.clip_grad_norm_(self.actor_critic.critic.parameters(), self.gradient_clip)
+#             torch.nn.utils.clip_grad_norm_(self.actor_critic.critic.parameters(), self.gradient_clip)
             self.opt.step()
 
         score = np.array(trajectory['rewards']).sum() / self.num_agents

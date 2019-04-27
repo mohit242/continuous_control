@@ -31,12 +31,10 @@ class PPOActor(nn.Module):
     #     return actions
 
     def forward(self, state, action=None):
-        state = torch.Tensor(state)
         mean = F.tanh(self.network(state))
         dist = torch.distributions.Normal(mean, F.softplus(self.std))
         if action is None:
             action = dist.sample()
-            action = torch.clamp(action, -1., 1.)
         log_prob = dist.log_prob(action).sum(-1).unsqueeze(-1)
 
         # No need for entropy as entropy for normal distribution depends on sigma

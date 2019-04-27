@@ -21,6 +21,5 @@ class PPOCritic(nn.Module):
         self.network = nn.Sequential(*layers)
 
     def forward(self, state):
-        state = torch.Tensor(state)
         v = self.network(state)
         return {'v': v}
