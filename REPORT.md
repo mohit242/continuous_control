@@ -37,3 +37,67 @@ Vector Action space size (per agent): 4
 
 ### Learning Algorithm
 
+#### Actor-Critic Method
+Actor-critic are a combination of policy-based and valued-based methods.
+In actor-critic methods:
+1. The critic estimates the value function.
+2. The actor updates the policy distribution in the direction suggested
+by the critic.
+
+Both the actor and critic are generally deep neural networks. The critic measures the goodness of actions
+and the actor controls the behaviour of the agent. Actor-critic methods require relatively lesser training samples and
+are more stable.
+
+#### Proximal Policy Optimization (PPO)
+PPO is a actor-critic method that updates policies by taking the largest possible
+step possible to improve performance, while keeping the new and old policies close(in terms of KL-divergence).
+PPO is a family of first-order methods unlike TRPO, which is a complex second-order method.
+
+In this code the clip variant of PPO is implemented. The PPO-clip variant neither has a KL-divergence term in the 
+objective nor a KL-divergence constraint. Instead relies on specialized clipping in the objective function to remove 
+incentives for the new policy to get far from the old policy.
+
+PPO is an on-policy algorithm.
+
+![ppo_update](https://spinningup.openai.com/en/latest/_images/math/b88048725cce4c17044e0042279bc1ecc11d54ff.svg)
+
+![ppo_loss](https://spinningup.openai.com/en/latest/_images/math/ae2cf1964bcfc3eab6172c6f70722dad8c2ba053.svg)
+
+Here epsilon is a hyperparameter which roughly says how far away the new policy is allowed to go
+from the old.
+
+#### PPO for continuous action spaces
+
+PPO can be used for continuous action spaces by modeling the actions as a diagonal normal distribution.
+It means that the covariance matrix of actions will only have non-zero elements in the main diagonal.
+The policy network now computes the mean per action value, instead of probability per action. We can either fix the 
+covariance matrix or compute it using another neural network. In this implementation the covariance matrix is fixed.
+ 
+
+#### Entropy 
+
+To promote exploration often times a entropy loss term is added to the loss function. The more the entropy, the more random the policy is.
+The contribution of entropy to loss can be controlled using a hyperparameter. 
+
+However, in this code, entropy is not added to loss as we are sampling from normal distributions with unchanging variance 
+and entropy of a normal distribution depends upon its variance only. 
+
+### Code description
+
+The code consists of the following packages and files:
+- main.py: run this file to train or eval model.
+- rlcc: package containing agent and model code.
+- rlcc/agent.py: ppo agent code.
+- rlcc/network: contains actor and critic classes.
+
+### Result
+
+![result_ppo]()
+
+Goal achieved in 994 episodes.
+
+### Ideas for future work
+
+- Trying other algorithms like DDPG, A3C, A2C etc.
+- Explore early stopping on the basis of KL-divergence.
+- Compare performance of PPO-Penalty vs PPO-Clip.
