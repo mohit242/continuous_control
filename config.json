@@ -1,0 +1,10 @@
+{
+  "no_graphics": false,
+  "steps_per_epoch": 20,
+  "gradient_clip": 1,
+  "gamma": 0.995,
+  "clip_ratio": 0.2,
+  "device": "cpu",
+  "minibatch_size": 200,
+  "seed": 100
+}
