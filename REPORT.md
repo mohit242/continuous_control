@@ -90,6 +90,58 @@ The code consists of the following packages and files:
 - rlcc/agent.py: ppo agent code.
 - rlcc/network: contains actor and critic classes.
 
+### Hyperparameters
+
+The following hyperparameters were used for training the ppo actor-critic submitted as the solution-
+```
+{
+  "no_graphics": false,
+  "steps_per_epoch": 20,
+  "gradient_clip": 1,
+  "gamma": 0.995,
+  "clip_ratio": 0.2,
+  "device": "cpu",
+  "minibatch_size": 200,
+  
+}
+```
+Graphics are turned off to speedup training and gradient clip is set to 1 to prevent unstable behaviour due to huge gradients.
+#### Neural Network Architecture
+
+For this problem statement simple feedforward fully connected neural networks are used. ReLU is used as the activation function in this architecture as it tends show good convergence performance in practice. 
+##### Actor Network
+
+```
+PPOActor(
+  (network): Sequential(
+    (0): Linear(in_features=33, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=4, bias=True)
+    (5): Tanh()
+  )
+)
+```
+The output of the last layer is the **mean** of the **action distribution**. This mean is used to model a diagonal normal distribution from which actions are sampled and log probabilities are calculated.
+
+Tanh is used in as the activation function in the last layer as ReLU smashes all negative values to zero. Also, tanh function constricts the activation in the range (-1, 1), which is good for our use case.
+##### Critic Network
+```
+PPOCritic(
+  (network): Sequential(
+    (0): Linear(in_features=33, out_features=64, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=64, out_features=64, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=64, out_features=1, bias=True)
+  )
+)
+
+```
+The ouput of this neural network is the **state value** for the given input state.
+
+
 ### Result
 
 ![result_ppo](result.png)
